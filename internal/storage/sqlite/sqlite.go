@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
+	"runtime"
 	"url-shortener/internal/storage"
 
 	"github.com/mattn/go-sqlite3"
@@ -18,8 +18,9 @@ type Storage struct {
 func New(storagePath string) (*Storage, error) {
 	const op = "storage.sqlite.New"
 
-	exPath, _ := os.Executable()
-	storagePath = filepath.Join(filepath.Dir(exPath), storagePath)
+	_, b, _, _ := runtime.Caller(0)
+	rootPath := filepath.Join(filepath.Dir(b), "../..")
+	storagePath = filepath.Join(filepath.Dir(rootPath), storagePath)
 
 	db, err := sql.Open("sqlite3", storagePath)
 	if err != nil {

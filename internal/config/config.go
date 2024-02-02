@@ -4,17 +4,20 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
-const CONFIG_PATH = "./local.yaml"
+const CONFIG_PATH = "../../local.yaml"
 
 type Config struct {
 	Env         string `yaml:"env" env-default:"local"`
 	StoragePath string `yaml:"storage_path" env-required:"true"`
 	HTTPServer  `yaml:"http_server"`
+	GrpcClient	`yaml:"grpc_client"`
+	JwtAppSecret string	`yaml:"jwt_app_secret"`
 }
 
 type HTTPServer struct {
@@ -25,9 +28,16 @@ type HTTPServer struct {
 	Password    string        `yaml:"password" env:"HTTP_SERVER_PASSWORD" env-default:"inf"`
 }
 
+type GrpcClient struct {
+	Address		string			`yaml:"address"`
+	Timeout		time.Duration	`yaml:"timeout"`
+	Retries		int				`yaml:"retries"`
+}
+
 func MustLoad() *Config {
-	exPath, _ := os.Executable()
-	configPath := filepath.Join(filepath.Dir(exPath), CONFIG_PATH)
+    _, b, _, _ := runtime.Caller(0)
+
+    configPath := filepath.Join(filepath.Dir(b), CONFIG_PATH)
 
 	// check if file exists
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {

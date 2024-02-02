@@ -9,8 +9,11 @@ import (
 	"syscall"
 	"time"
 	"url-shortener/internal/config"
+	"url-shortener/internal/grpc"
 	"url-shortener/internal/http-server/handlers/redirect"
 	"url-shortener/internal/http-server/handlers/url/save"
+	"url-shortener/internal/http-server/middleware/auth"
+	"url-shortener/internal/http-server/middleware/isAdmin"
 	"url-shortener/internal/http-server/middleware/logger"
 	"url-shortener/internal/storage/sqlite"
 	"url-shortener/lib/logger/handlers/slogpretty"
@@ -37,6 +40,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	grpcClient, err := grpc.New(context.Background(), log, &cfg.GrpcClient)
+	if err != nil {
+		log.Error("Couldn't connect to grpc host", sl.Err(err))
+		os.Exit(1)
+	}
+
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)
@@ -45,9 +54,13 @@ func main() {
 	router.Use(middleware.URLFormat)
 
 	router.Route("/url", func(r chi.Router) {
+		router.Use(auth.New(log, cfg.JwtAppSecret, grpcClient))
+
 		r.Use(middleware.BasicAuth("url-shortener", map[string]string{
 			cfg.HTTPServer.User: cfg.HTTPServer.Password,
 		}))
+
+		r.Use(isAdmin.New(log))
 
 		r.Post("/", save.New(log, storage))
 		// TODO: add DELETE /url/{id}
@@ -60,7 +73,7 @@ func main() {
 
 
 	srv := &http.Server{
-		Addr:         cfg.Address,
+		Addr:         cfg.HTTPServer.Address,
 		Handler:      router,
 		ReadTimeout:  cfg.HTTPServer.Timeout,
 		WriteTimeout: cfg.HTTPServer.Timeout,
