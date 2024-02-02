@@ -16,7 +16,7 @@ func New(log *slog.Logger) func(next http.Handler) http.Handler {
 			isAdmin, ok := r.Context().Value(auth.IsAdminKey).(bool)
 
 			if !ok || !isAdmin {
-				w.WriteHeader(http.StatusUnauthorized)
+				w.WriteHeader(http.StatusForbidden)
 				return
 			}
 
